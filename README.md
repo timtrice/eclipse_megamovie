@@ -1,5 +1,3 @@
-# eclipse_megamovie
+# Eclipse Megamovie
 
-A [workflowr][] project.
-
-[workflowr]: https://github.com/jdblischak/workflowr
+[GitHub]: https://github.com/timtrice/eclipse_megamovie

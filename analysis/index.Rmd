@@ -1,9 +1,174 @@
 ---
 title: "Home"
 site: workflowr::wflow_site
-output:
-  workflowr::wflow_html:
-    toc: false
+output: workflowr::wflow_html
 ---
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE, 
+  error = TRUE, 
+  fig.align = "center",
+  fig.width = 10, 
+  fig.asp = 1, 
+  dpi = 150
+)
+```
 
-Welcome to my research website.
+```{r, message = FALSE}
+library(tidyverse)
+```
+
+[Eclipse Megamovie](http://eclipsemegamovie.org/)
+
+* No codebook
+
+```{r data}
+load(file = here::here("./data/data.RData"))
+```
+
+```{r photos}
+photos <- 
+  union(
+    select(
+      dfs$photos_v_0_1, model, make, lat, lon, state, camera_datetime,
+      exposure_time, aperture_value, totality, vision_labels), 
+    select(
+      dfs$photos_v_0_2, model, make, lat, lon, state, camera_datetime,
+      exposure_time, aperture_value, totality, vision_labels), 
+    select(
+      dfs$photos_v_0_3model, make, lat, lon, state, camera_datetime,
+      exposure_time, aperture_value, totality, vision_labels)
+  )
+```
+
+```{r}
+photos$make <- str_to_title(photos$make)
+str(photos)
+```
+
+```{r}
+photos$make[photos$make %in% c("Lge", "Lg Electronics")] <- "LG Electronics"
+photos$make[photos$make %in% c("Nikon Corporation")] <- "Nikon"
+photos$make[photos$make %in% c("Olympus Corporation", "Olympus Imaging Corp.")] <- "Olympus"
+photos$make[photos$make == "Ricoh Imaging Company, Ltd."] <- "Ricoh"
+photos$make[photos$make %in% c("samsung", "SAMSUNG", "Sch-I545")] <- "Samsung"
+photos$make[photos$make == "Sk Communications"] <- "SK Communiations"
+photos$make[photos$make == "Htc"] <- "HTC"
+photos$make[photos$make == "Zte"] <- "ZTE"
+photos$make[photos$make == "Dji"] <- "DJI"
+```
+
+```{r}
+photos %>% 
+  group_by(make) %>% 
+  count() %>% 
+  ungroup() %>% 
+  na.omit() %>% 
+  mutate(make = fct_reorder(make, n)) %>% 
+  ggplot() + 
+  aes(x = make, y = n) + 
+  geom_col() + 
+  coord_flip() + 
+  scale_x_discrete(
+    expand = c(0, 0)
+  ) + 
+  scale_y_continuous(
+    labels = scales::comma
+  ) + 
+  labs(
+    title = "Image Counts by Camera Make", 
+    x = "Images", 
+    y = "Camera Make"
+  )
+```
+
+```{r}
+x <- 
+  tibble(
+    state = state.abb, 
+    region = str_to_lower(state.name)
+  ) %>% 
+  left_join(
+    photos %>% 
+      count(state), 
+    by = "state"
+  ) %>% 
+  rename(value = n) %>% 
+  add_row(
+    state = "DC", 
+    region = "district of columbia", 
+    value = 0
+  )
+
+x$value[is.na(x$value)] <- 0
+```
+
+```{r}
+state_choropleth(x)
+```
+
+```{r, fig.asp = 0.7}
+world_map <- map_data("world")
+
+photos %>% 
+  ggplot() +
+  aes(x = lon, y = lat) + 
+  geom_polygon(
+    data = world_map, 
+    aes(
+      x = long, 
+      y = lat, 
+      group = group
+    ), 
+    fill = "white", 
+    color = "black", 
+    size = 0.25
+  ) + 
+  geom_point(color = "red") + 
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) + 
+  coord_cartesian() + 
+  labs(
+    title = "Images Captured Internationally", 
+    x = "Lon", 
+    y = "Lat"
+  )
+```
+
+```{r, fig.asp = 0.7}
+state_map <- map_data("state")
+
+photos %>% 
+  ggplot() +
+  aes(x = lon, y = lat) + 
+  geom_polygon(
+    data = state_map, 
+    aes(
+      x = long, 
+      y = lat, 
+      group = group
+    ), 
+    fill = NA, 
+    color = "black", 
+    size = 0.25
+  ) + 
+  geom_point(color = "red") + 
+  scale_x_continuous(
+    limits = c(-125, -67), 
+    expand = c(0, 0), 
+    breaks = seq(-65, -125, -10), 
+    minor_breaks = seq(-65, -125, -5)
+  ) + 
+  scale_y_continuous(
+    limits = c(25, 50), 
+    expand = c(0, 0), 
+    breaks = seq(25, 50, 10), 
+    minor_breaks = seq(25, 50, 5)
+  ) + 
+  coord_cartesian() + 
+  labs(
+    title = "Images Captured Domestically", 
+    x = "Lon", 
+    y = "Lat"
+  )
+```
